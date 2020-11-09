@@ -23,14 +23,14 @@
 
 	/* literal keyword tokens */
 
-%token ALL AMMSC ANY AS ASC AUTHORIZATION BETWEEN BY
+%token ALL AMMSC ANY AS ASC BETWEEN BY DROP
 %token CHARACTER CHECK CLOSE COMMIT CONTINUE CREATE CURRENT
 %token CURSOR DECIMAL DECLARE DEFAULT DELETE DESC DISTINCT DOUBLE
 %token ESCAPE EXISTS FETCH FLOAT FOR FOREIGN FOUND FROM GOTO
 %token GRANT GROUP HAVING IN INDICATOR INSERT INTEGER INTO
 %token IS KEY LANGUAGE LIKE NULLX NUMERIC OF ON OPEN OPTION
 %token ORDER PARAMETER PRECISION PRIMARY PRIVILEGES PROCEDURE
-%token PUBLIC REAL REFERENCES ROLLBACK SCHEMA SELECT SET
+%token PUBLIC REAL REFERENCES ROLLBACK DATABASE SELECT SET
 %token SMALLINT SOME SQLCODE SQLERROR TABLE TO UNION
 %token UNIQUE UPDATE USER VALUES VIEW WHENEVER WHERE WITH WORK
 
@@ -47,27 +47,18 @@ sql:		schema
 	;
 	
 schema:
-		CREATE SCHEMA AUTHORIZATION user opt_schema_element_list
-	;
+        base_create
+        | base_table_def
+        | view_def
+	    ;
 
-opt_schema_element_list:
-		/* empty */
-	|	schema_element_list
-	;
-
-schema_element_list:
-		schema_element
-	|	schema_element_list schema_element
-	;
-
-schema_element:
-		base_table_def
-	|	view_def
-	|	privilege_def
-	;
+ base_create:
+             CREATE DATABASE user
+             DROP DATABASE user
+             ;
 
 base_table_def:
-		CREATE TABLE table '(' base_table_element_commalist ')'
+		CREATE TABLE table_name '(' base_table_element_commalist ')'
 	;
 
 base_table_element_commalist:
@@ -77,7 +68,6 @@ base_table_element_commalist:
 
 base_table_element:
 		column_def
-	|	table_constraint_def
 	;
 
 column_def:
@@ -93,114 +83,20 @@ column_def_opt:
 		NOT NULLX
 	|	NOT NULLX UNIQUE
 	|	NOT NULLX PRIMARY KEY
-	|	DEFAULT literal
-	|	DEFAULT NULLX
-	|	DEFAULT USER
-	|	CHECK '(' search_condition ')'
-	|	REFERENCES table
-	|	REFERENCES table '(' column_commalist ')'
-	;
-
-table_constraint_def:
-		UNIQUE '(' column_commalist ')'
-	|	PRIMARY KEY '(' column_commalist ')'
-	|	FOREIGN KEY '(' column_commalist ')'
-			REFERENCES table 
-	|	FOREIGN KEY '(' column_commalist ')'
-			REFERENCES table '(' column_commalist ')'
-	|	CHECK '(' search_condition ')'
-	;
-
-column_commalist:
-		column
-	|	column_commalist ',' column
+	|	REFERENCES table_name
 	;
 
 view_def:
-		CREATE VIEW table opt_column_commalist
-		AS query_spec opt_with_check_option
-	;
-	
-opt_with_check_option:
-		/* empty */
-	|	WITH CHECK OPTION
+		CREATE VIEW '['view_list']'
+		AS manipulative_statement
 	;
 
-opt_column_commalist:
-		/* empty */
-	|	'(' column_commalist ')'
-	;
+view_list: view_name 
+        | view_list ',' view_name
+          ;
 
-privilege_def:
-		GRANT privileges ON table TO grantee_commalist
-		opt_with_grant_option
-	;
-
-opt_with_grant_option:
-		/* empty */
-	|	WITH GRANT OPTION
-	;
-
-privileges:
-		ALL PRIVILEGES
-	|	ALL
-	|	operation_commalist
-	;
-
-operation_commalist:
-		operation
-	|	operation_commalist ',' operation
-	;
-
-operation:
-		SELECT
-	|	INSERT
-	|	DELETE
-	|	UPDATE opt_column_commalist
-	|	REFERENCES opt_column_commalist
-	;
-
-
-grantee_commalist:
-		grantee
-	|	grantee_commalist ',' grantee
-	;
-
-grantee:
-		PUBLIC
-	|	user
-	;
-
-	/* cursor definition */
-sql:
-		cursor_def
-	;
-
-
-cursor_def:
-		DECLARE cursor CURSOR FOR query_exp opt_order_by_clause
-	;
-
-opt_order_by_clause:
-		/* empty */
-	|	ORDER BY ordering_spec_commalist
-	;
-
-ordering_spec_commalist:
-		ordering_spec
-	|	ordering_spec_commalist ',' ordering_spec
-	;
-
-ordering_spec:
-		INTNUM opt_asc_desc
-	|	column_ref opt_asc_desc
-	;
-
-opt_asc_desc:
-		/* empty */
-	|	ASC
-	|	DESC
-	;
+view_name: NAME
+           ;
 
 	/* manipulative statements */
 
@@ -208,42 +104,26 @@ sql:		manipulative_statement
 	;
 
 manipulative_statement:
-		close_statement
-	|	commit_statement
-	|	delete_statement_positioned
 	|	delete_statement_searched
-	|	fetch_statement
 	|	insert_statement
-	|	open_statement
-	|	rollback_statement
 	|	select_statement
-	|	update_statement_positioned
 	|	update_statement_searched
 	;
 
-close_statement:
-		CLOSE cursor
-	;
-
-commit_statement:
-		COMMIT WORK
-	;
-
-delete_statement_positioned:
-		DELETE FROM table WHERE CURRENT OF cursor
-	;
-
 delete_statement_searched:
-		DELETE FROM table opt_where_clause
-	;
-
-fetch_statement:
-		FETCH cursor INTO target_commalist
+		DELETE FROM table_name opt_where_clause
 	;
 
 insert_statement:
-		INSERT INTO table opt_column_commalist values_or_query_spec
+		INSERT INTO table_name '(' column_commalist ')' values_or_query_spec
 	;
+
+    
+column_commalist:
+		column
+	|	column_commalist ',' column
+	;
+
 
 values_or_query_spec:
 		VALUES '(' insert_atom_commalist ')'
@@ -260,17 +140,8 @@ insert_atom:
 	|	NULLX
 	;
 
-open_statement:
-		OPEN cursor
-	;
-
-rollback_statement:
-		ROLLBACK WORK
-	;
-
 select_statement:
 		SELECT opt_all_distinct selection
-		INTO target_commalist
 		table_exp
 	;
 
@@ -278,11 +149,6 @@ opt_all_distinct:
 		/* empty */
 	|	ALL
 	|	DISTINCT
-	;
-
-update_statement_positioned:
-		UPDATE table SET assignment_commalist
-		WHERE CURRENT OF cursor
 	;
 
 assignment_commalist:
@@ -296,7 +162,7 @@ assignment:
 	;
 
 update_statement_searched:
-		UPDATE table SET assignment_commalist opt_where_clause
+		UPDATE table_name SET assignment_commalist opt_where_clause
 	;
 
 target_commalist:
@@ -352,8 +218,8 @@ table_ref_commalist:
 	;
 
 table_ref:
-		table 
-	|	table range_variable
+		table_name 
+	|	table_name range_variable
 	;
 
 where_clause:
@@ -457,8 +323,6 @@ scalar_exp:
 	|	scalar_exp '-' scalar_exp
 	|	scalar_exp '*' scalar_exp
 	|	scalar_exp '/' scalar_exp
-	|	'+' scalar_exp %prec UMINUS
-	|	'-' scalar_exp %prec UMINUS
 	|	atom
 	|	column_ref
 	|	function_ref
@@ -497,7 +361,7 @@ literal:
 
 	/* miscellaneous */
 
-table:
+table_name:
 		NAME
 	|	NAME '.' NAME
 	;
@@ -530,9 +394,6 @@ data_type:
 	/* the various things you can name */
 
 column:		NAME
-	;
-
-cursor:		NAME
 	;
 
 parameter:

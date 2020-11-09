@@ -18,7 +18,7 @@ START_SQL	{ printf("SQL started\n");BEGIN SQL; start_save(); }
 
 
 	/* literal keyword tokens */
-
+<SQL>DROP       TOK(DROP)
 <SQL>ALL		TOK(ALL)
 <SQL>AND		TOK(AND)
 <SQL>AVG		TOK(AMMSC)
@@ -29,7 +29,6 @@ START_SQL	{ printf("SQL started\n");BEGIN SQL; start_save(); }
 <SQL>ANY		TOK(ANY)
 <SQL>AS			TOK(AS)
 <SQL>ASC		TOK(ASC)
-<SQL>AUTHORIZATION	TOK(AUTHORIZATION)
 <SQL>BETWEEN		TOK(BETWEEN)
 <SQL>BY			TOK(BY)
 <SQL>CHAR(ACTER)?	TOK(CHARACTER)
@@ -70,27 +69,27 @@ START_SQL	{ printf("SQL started\n");BEGIN SQL; start_save(); }
 <SQL>LIKE		TOK(LIKE)
 <SQL>NOT		TOK(NOT)
 <SQL>NULL		TOK(NULLX)
-<SQL>NUMERIC		TOK(NUMERIC)
+<SQL>NUMERIC	TOK(NUMERIC)
 <SQL>OF			TOK(OF)
 <SQL>ON			TOK(ON)
 <SQL>OPEN		TOK(OPEN)
 <SQL>OPTION		TOK(OPTION)
 <SQL>OR			TOK(OR)
 <SQL>ORDER		TOK(ORDER)
-<SQL>PRECISION		TOK(PRECISION)
-<SQL>PRIMARY		TOK(PRIMARY)
-<SQL>PRIVILEGES		TOK(PRIVILEGES)
-<SQL>PROCEDURE		TOK(PROCEDURE)
+<SQL>PRECISION	TOK(PRECISION)
+<SQL>PRIMARY	TOK(PRIMARY)
+<SQL>PRIVILEGES	TOK(PRIVILEGES)
+<SQL>PROCEDURE	TOK(PROCEDURE)
 <SQL>PUBLIC		TOK(PUBLIC)
 <SQL>REAL		TOK(REAL)
-<SQL>REFERENCES		TOK(REFERENCES)
-<SQL>ROLLBACK		TOK(ROLLBACK)
-<SQL>SCHEMA		TOK(SCHEMA)
+<SQL>REFERENCES	TOK(REFERENCES)
+<SQL>ROLLBACK	TOK(ROLLBACK)
+<SQL>DATABASE	TOK(DATABASE)
 <SQL>SELECT		TOK(SELECT)
 <SQL>SET		TOK(SET)
-<SQL>SMALLINT		TOK(SMALLINT)
+<SQL>SMALLINT	TOK(SMALLINT)
 <SQL>SOME		TOK(SOME)
-<SQL>SQLCODE		TOK(SQLCODE)
+<SQL>SQLCODE	TOK(SQLCODE)
 <SQL>TABLE		TOK(TABLE)
 <SQL>TO			TOK(TO)
 <SQL>UNION		TOK(UNION)
@@ -99,7 +98,7 @@ START_SQL	{ printf("SQL started\n");BEGIN SQL; start_save(); }
 <SQL>USER		TOK(USER)
 <SQL>VALUES		TOK(VALUES)
 <SQL>VIEW		TOK(VIEW)
-<SQL>WHENEVER		TOK(WHENEVER)
+<SQL>WHENEVER	TOK(WHENEVER)
 <SQL>WHERE		TOK(WHERE)
 <SQL>WITH		TOK(WITH)
 <SQL>WORK		TOK(WORK)
@@ -165,21 +164,16 @@ yyerror(char *s)
 	printf("%d: %s at %s\n", lineno, s, yytext);
 }
 
-main(int ac, char **av)
+int main()
 {
-	if(ac > 1 && (yyin = fopen(av[1], "r")) == NULL) {
-		perror(av[1]);
-		exit(1);
-	}
-
 	if(!yyparse())
-		fprintf(stderr, "Embedded SQL parse worked\n");
+		printf("Embedded SQL parse worked\n");
 	else
-		fprintf(stderr, "Embedded SQL parse failed\n");
-} /* main */
+		printf("Embedded SQL parse failed\n");
+}
 
 /* leave SQL lexing mode */
 un_sql()
 {
 	BEGIN INITIAL;
-} /* un_sql */
+}
