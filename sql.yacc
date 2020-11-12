@@ -9,31 +9,22 @@
 	
 %token NAME
 %token STRING
-%token INTNUM APPROXNUM
+%token INTNUM
 
 	/* operators */
 
 %left OR
 %left AND
 %left NOT
-%left <subtok> COMPARISON /* = <> < > <= >= */
+%left <subtok> COMPARISON /* = < > <= >= */
 %left '+' '-'
 %left '*' '/'
-%nonassoc UMINUS
 
 	/* literal keyword tokens */
 
-%token ALL AMMSC ANY AS ASC BETWEEN BY DROP
-%token CHARACTER CHECK CLOSE COMMIT CONTINUE CREATE CURRENT
-%token CURSOR DECIMAL DECLARE DEFAULT DELETE DESC DISTINCT DOUBLE
-%token ESCAPE EXISTS FETCH FLOAT FOR FOREIGN FOUND FROM GOTO
-%token GRANT GROUP HAVING IN INDICATOR INSERT INTEGER INTO
-%token IS KEY LANGUAGE LIKE NULLX NUMERIC OF ON OPEN OPTION
-%token ORDER PARAMETER PRECISION PRIMARY PRIVILEGES PROCEDURE
-%token PUBLIC REAL REFERENCES ROLLBACK DATABASE SELECT SET
-%token SMALLINT SOME SQLCODE SQLERROR TABLE TO UNION
-%token UNIQUE UPDATE USER VALUES VIEW WHENEVER WHERE WITH WORK
-
+%token ALL AMMSC ANY AS ASC BETWEEN BY DROP CREATE DELETE DESC DISTINCT FROM GROUP HAVING IN INSERT INTO LIKE NULLX
+%token WHERE VALUES VIEW UNIQUE UPDATE TABLE UNION DATABASE SELECT CHARACTER DOUBLE DECIMAL INTEGER KEY NUMERIC ORDER 
+%token PARAMETER PRECISION PRIMARY PRIVILEGES REAL SMALLINT USER REFERENCES SET IS
 %%
 
 sql_list:
@@ -47,12 +38,12 @@ sql:		schema
 	;
 	
 schema:
-        base_create
+          base_create
         | base_table_def
         | view_def
 	    ;
 
- base_create:
+base_create:
              CREATE DATABASE user
              DROP DATABASE user
              ;
@@ -62,13 +53,13 @@ base_table_def:
 	;
 
 base_table_element_commalist:
-		base_table_element
-	|	base_table_element_commalist ',' base_table_element
+		column_def
+	|	base_table_element_commalist ',' column_def
 	;
 
-base_table_element:
+  /*base_table_element:
 		column_def
-	;
+	;*/
 
 column_def:
 		column data_type column_def_opt_list
@@ -258,7 +249,6 @@ predicate:
 	|	test_for_null
 	|	in_predicate
 	|	all_or_any_predicate
-	|	existence_test
 	;
 
 comparison_predicate:
@@ -272,13 +262,8 @@ between_predicate:
 	;
 
 like_predicate:
-		scalar_exp NOT LIKE atom opt_escape
-	|	scalar_exp LIKE atom opt_escape
-	;
-
-opt_escape:
-		/* empty */
-	|	ESCAPE atom
+		scalar_exp NOT LIKE atom
+	|	scalar_exp LIKE atom
 	;
 
 test_for_null:
@@ -305,11 +290,6 @@ all_or_any_predicate:
 any_all_some:
 		ANY
 	|	ALL
-	|	SOME
-	;
-
-existence_test:
-		EXISTS subquery
 	;
 
 subquery:
@@ -343,7 +323,6 @@ atom:
 parameter_ref:
 		parameter
 	|	parameter parameter
-	|	parameter INDICATOR parameter
 	;
 
 function_ref:
@@ -356,7 +335,6 @@ function_ref:
 literal:
 		STRING
 	|	INTNUM
-	|	APPROXNUM
 	;
 
 	/* miscellaneous */
@@ -404,14 +382,5 @@ range_variable:	NAME
 	;
 
 user:		NAME
-	;
-
-	/* embedded condition things */
-sql:		WHENEVER NOT FOUND when_action
-	|	WHENEVER SQLERROR when_action
-	;
-
-when_action:	GOTO NAME
-	|	CONTINUE
 	;
 %%
