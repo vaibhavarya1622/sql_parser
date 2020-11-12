@@ -1,179 +1,386 @@
-%{
-#include "y.tab.h"
-#include <string.h>
+/* symbolic tokens */
 
-int lineno = 1;
-void yyerror(char *s);
+%union {
+	int intval;
+	double floatval;
+	char *strval;
+	int subtok;
+}
+	
+%token NAME
+%token STRING
+%token INTNUM
 
-	/* macro to save the text of a SQL token */
-#define SV save_str(yytext)
+	/* operators */
 
-	/* macro to save the text and return a token */
-#define TOK(name) { SV;return name; }
-%}
-%s SQL
-%%
-
-START_SQL	{ printf("SQL started\n");BEGIN SQL; start_save(); }
-
+%left OR
+%left AND
+%left NOT
+%left <subtok> COMPARISON /* = < > <= >= */
+%left '+' '-'
+%left '*' '/'
 
 	/* literal keyword tokens */
-<SQL>DROP       TOK(DROP)
-<SQL>ALL		TOK(ALL)
-<SQL>AND		TOK(AND)
-<SQL>AVG		TOK(AMMSC)
-<SQL>MIN		TOK(AMMSC)
-<SQL>MAX		TOK(AMMSC)
-<SQL>SUM		TOK(AMMSC)
-<SQL>COUNT		TOK(AMMSC)
-<SQL>ANY		TOK(ANY)
-<SQL>AS			TOK(AS)
-<SQL>ASC		TOK(ASC)
-<SQL>BETWEEN		TOK(BETWEEN)
-<SQL>BY			TOK(BY)
-<SQL>CHAR(ACTER)?	TOK(CHARACTER)
-<SQL>CHECK		TOK(CHECK)
-<SQL>CLOSE		TOK(CLOSE)
-<SQL>COMMIT		TOK(COMMIT)
-<SQL>CONTINUE		TOK(CONTINUE)
-<SQL>CREATE		TOK(CREATE)
-<SQL>CURRENT		TOK(CURRENT)
-<SQL>CURSOR		TOK(CURSOR)
-<SQL>DECIMAL		TOK(DECIMAL)
-<SQL>DECLARE		TOK(DECLARE)
-<SQL>DEFAULT		TOK(DEFAULT)
-<SQL>DELETE		TOK(DELETE)
-<SQL>DESC		TOK(DESC)
-<SQL>DISTINCT		TOK(DISTINCT)
-<SQL>DOUBLE		TOK(DOUBLE)
-<SQL>ESCAPE		TOK(ESCAPE)
-<SQL>EXISTS		TOK(EXISTS)
-<SQL>FETCH		TOK(FETCH)
-<SQL>FLOAT		TOK(FLOAT)
-<SQL>FOR		TOK(FOR)
-<SQL>FOREIGN		TOK(FOREIGN)
-<SQL>FOUND		TOK(FOUND)
-<SQL>FROM		TOK(FROM)
-<SQL>GO[ \t]*TO		TOK(GOTO)
-<SQL>GRANT		TOK(GRANT)
-<SQL>GROUP		TOK(GROUP)
-<SQL>HAVING		TOK(HAVING)
-<SQL>IN			TOK(IN)
-<SQL>INDICATOR		TOK(INDICATOR)
-<SQL>INSERT		TOK(INSERT)
-<SQL>INT(EGER)?		TOK(INTEGER)
-<SQL>INTO		TOK(INTO)
-<SQL>IS			TOK(IS)
-<SQL>KEY		TOK(KEY)
-<SQL>LANGUAGE		TOK(LANGUAGE)
-<SQL>LIKE		TOK(LIKE)
-<SQL>NOT		TOK(NOT)
-<SQL>NULL		TOK(NULLX)
-<SQL>NUMERIC	TOK(NUMERIC)
-<SQL>OF			TOK(OF)
-<SQL>ON			TOK(ON)
-<SQL>OPEN		TOK(OPEN)
-<SQL>OPTION		TOK(OPTION)
-<SQL>OR			TOK(OR)
-<SQL>ORDER		TOK(ORDER)
-<SQL>PRECISION	TOK(PRECISION)
-<SQL>PRIMARY	TOK(PRIMARY)
-<SQL>PRIVILEGES	TOK(PRIVILEGES)
-<SQL>PROCEDURE	TOK(PROCEDURE)
-<SQL>PUBLIC		TOK(PUBLIC)
-<SQL>REAL		TOK(REAL)
-<SQL>REFERENCES	TOK(REFERENCES)
-<SQL>ROLLBACK	TOK(ROLLBACK)
-<SQL>DATABASE	TOK(DATABASE)
-<SQL>SELECT		TOK(SELECT)
-<SQL>SET		TOK(SET)
-<SQL>SMALLINT	TOK(SMALLINT)
-<SQL>SOME		TOK(SOME)
-<SQL>SQLCODE	TOK(SQLCODE)
-<SQL>TABLE		TOK(TABLE)
-<SQL>TO			TOK(TO)
-<SQL>UNION		TOK(UNION)
-<SQL>UNIQUE		TOK(UNIQUE)
-<SQL>UPDATE		TOK(UPDATE)
-<SQL>USER		TOK(USER)
-<SQL>VALUES		TOK(VALUES)
-<SQL>VIEW		TOK(VIEW)
-<SQL>WHENEVER	TOK(WHENEVER)
-<SQL>WHERE		TOK(WHERE)
-<SQL>WITH		TOK(WITH)
-<SQL>WORK		TOK(WORK)
 
-	/* punctuation */
-
-<SQL>"="	|
-<SQL>"<>" 	|
-<SQL>"<"	|
-<SQL>">"	|
-<SQL>"<="	|
-<SQL>">="		TOK(COMPARISON)
-
-<SQL>[-+*/(),.;]	TOK(yytext[0])
-
-
-	/* names */
-<SQL>[A-Za-z][A-Za-z0-9_]*	TOK(NAME)
-
-	/* parameters */
-<SQL>":"[A-Za-z][A-Za-z0-9_]*	{
-			save_param(yytext+1);
-			return PARAMETER;
-		}
-
-	/* numbers */
-
-<SQL>[0-9]+	|
-<SQL>[0-9]+"."[0-9]* |
-<SQL>"."[0-9]*		TOK(INTNUM)
-
-<SQL>[0-9]+[eE][+-]?[0-9]+	|
-<SQL>[0-9]+"."[0-9]*[eE][+-]?[0-9]+ |
-<SQL>"."[0-9]*[eE][+-]?[0-9]+	TOK(APPROXNUM)
-
-	/* strings */
-
-<SQL>'[^'\n]*'	{
-		int c = input();
-
-		unput(c);	/* just peeking */
-		if(c != '\'') {
-			SV;return STRING;
-		} else
-			yymore();
-	}
-		
-<SQL>'[^'\n]*$	{	yyerror("Unterminated string"); }
-
-<SQL>\n		{ save_str(" ");lineno++; }
-\n		{ lineno++; ECHO; }
-
-<SQL>[ \t\r]+	save_str(" ");	/* white space */
-
-<SQL>"--".*	;	/* comment */
-
-.		ECHO;	/* random non-SQL text */
+%token ALL AMMSC ANY AS ASC BETWEEN BY DROP CREATE DELETE DESC DISTINCT FROM GROUP HAVING IN INSERT INTO LIKE NULLX
+%token WHERE VALUES VIEW UNIQUE UPDATE TABLE UNION DATABASE SELECT CHARACTER DOUBLE DECIMAL INTEGER KEY NUMERIC ORDER 
+%token PARAMETER PRECISION PRIMARY PRIVILEGES REAL SMALLINT USER REFERENCES SET IS
 %%
 
-void
-yyerror(char *s)
-{
-	printf("%d: %s at %s\n", lineno, s, yytext);
-}
+sql_list:
+		sql ';'	{ end_sql(); }
+	|	sql_list sql ';' { end_sql(); }
+	;
 
-int main()
-{
-	if(!yyparse())
-		printf("Embedded SQL parse worked\n");
-	else
-		printf("Embedded SQL parse failed\n");
-}
 
-/* leave SQL lexing mode */
-un_sql()
-{
-	BEGIN INITIAL;
-}
+	/* schema definition language */
+sql:		schema
+	;
+	
+schema:
+          base_create
+        | base_table_def
+        | view_def
+	    ;
+
+base_create:
+             CREATE DATABASE user
+             DROP DATABASE user
+             ;
+
+base_table_def:
+		CREATE TABLE table_name '(' base_table_element_commalist ')'
+	;
+
+base_table_element_commalist:
+		column_def
+	|	base_table_element_commalist ',' column_def
+	;
+
+  /*base_table_element:
+		column_def
+	;*/
+
+column_def:
+		column data_type column_def_opt_list
+	;
+
+column_def_opt_list:
+		/* empty */
+	|	column_def_opt_list column_def_opt
+	;
+
+column_def_opt:
+		NOT NULLX
+	|	NOT NULLX UNIQUE
+	|	NOT NULLX PRIMARY KEY
+	|	REFERENCES table_name
+	;
+
+view_def:
+		CREATE VIEW '['view_list']'
+		AS manipulative_statement
+	;
+
+view_list: view_name 
+        | view_list ',' view_name
+          ;
+
+view_name: NAME
+           ;
+
+	/* manipulative statements */
+
+sql:		manipulative_statement
+	;
+
+manipulative_statement:
+	|	delete_statement_searched
+	|	insert_statement
+	|	select_statement
+	|	update_statement_searched
+	;
+
+delete_statement_searched:
+		DELETE FROM table_name opt_where_clause
+	;
+
+insert_statement:
+		INSERT INTO table_name '(' column_commalist ')' values_or_query_spec
+	;
+
+    
+column_commalist:
+		column
+	|	column_commalist ',' column
+	;
+
+
+values_or_query_spec:
+		VALUES '(' insert_atom_commalist ')'
+	|	query_spec
+	;
+
+insert_atom_commalist:
+		insert_atom
+	|	insert_atom_commalist ',' insert_atom
+	;
+
+insert_atom:
+		atom
+	|	NULLX
+	;
+
+select_statement:
+		SELECT opt_all_distinct selection
+		table_exp
+	;
+
+opt_all_distinct:
+		/* empty */
+	|	ALL
+	|	DISTINCT
+	;
+
+assignment_commalist:
+	|	assignment
+	|	assignment_commalist ',' assignment
+	;
+
+assignment:
+		column '=' scalar_exp
+	|	column '=' NULLX
+	;
+
+update_statement_searched:
+		UPDATE table_name SET assignment_commalist opt_where_clause
+	;
+
+target_commalist:
+		target
+	|	target_commalist ',' target
+	;
+
+target:
+		parameter_ref
+	;
+
+opt_where_clause:
+		/* empty */
+	|	where_clause
+	;
+
+	/* query expressions */
+
+query_exp:
+		query_term
+	|	query_exp UNION query_term
+	|	query_exp UNION ALL query_term
+	;
+
+query_term:
+		query_spec
+	|	'(' query_exp ')'
+	;
+
+query_spec:
+		SELECT opt_all_distinct selection table_exp
+	;
+
+selection:
+		scalar_exp_commalist
+	|	'*'
+	;
+
+table_exp:
+		from_clause
+		opt_where_clause
+		opt_group_by_clause
+		opt_having_clause
+	;
+
+from_clause:
+		FROM table_ref_commalist
+	;
+
+table_ref_commalist:
+		table_ref
+	|	table_ref_commalist ',' table_ref
+	;
+
+table_ref:
+		table_name 
+	|	table_name range_variable
+	;
+
+where_clause:
+		WHERE search_condition
+	;
+
+opt_group_by_clause:
+		/* empty */
+	|	GROUP BY column_ref_commalist
+	;
+
+column_ref_commalist:
+		column_ref
+	|	column_ref_commalist ',' column_ref
+	;
+
+opt_having_clause:
+		/* empty */
+	|	HAVING search_condition
+	;
+
+	/* search conditions */
+
+search_condition:
+	|	search_condition OR search_condition
+	|	search_condition AND search_condition
+	|	NOT search_condition
+	|	'(' search_condition ')'
+	|	predicate
+	;
+
+predicate:
+		comparison_predicate
+	|	between_predicate
+	|	like_predicate
+	|	test_for_null
+	|	in_predicate
+	|	all_or_any_predicate
+	;
+
+comparison_predicate:
+		scalar_exp COMPARISON scalar_exp
+	|	scalar_exp COMPARISON subquery
+	;
+
+between_predicate:
+		scalar_exp NOT BETWEEN scalar_exp AND scalar_exp
+	|	scalar_exp BETWEEN scalar_exp AND scalar_exp
+	;
+
+like_predicate:
+		scalar_exp NOT LIKE atom
+	|	scalar_exp LIKE atom
+	;
+
+test_for_null:
+		column_ref IS NOT NULLX
+	|	column_ref IS NULLX
+	;
+
+in_predicate:
+		scalar_exp NOT IN '(' subquery ')'
+	|	scalar_exp IN '(' subquery ')'
+	|	scalar_exp NOT IN '(' atom_commalist ')'
+	|	scalar_exp IN '(' atom_commalist ')'
+	;
+
+atom_commalist:
+		atom
+	|	atom_commalist ',' atom
+	;
+
+all_or_any_predicate:
+		scalar_exp COMPARISON any_all_some subquery
+	;
+			
+any_all_some:
+		ANY
+	|	ALL
+	;
+
+subquery:
+		'(' SELECT opt_all_distinct selection table_exp ')'
+	;
+
+	/* scalar expressions */
+
+scalar_exp:
+		scalar_exp '+' scalar_exp
+	|	scalar_exp '-' scalar_exp
+	|	scalar_exp '*' scalar_exp
+	|	scalar_exp '/' scalar_exp
+	|	atom
+	|	column_ref
+	|	function_ref
+	|	'(' scalar_exp ')'
+	;
+
+scalar_exp_commalist:
+		scalar_exp
+	|	scalar_exp_commalist ',' scalar_exp
+	;
+
+atom:
+		parameter_ref
+	|	literal
+	|	USER
+	;
+
+parameter_ref:
+		parameter
+	|	parameter parameter
+	;
+
+function_ref:
+		AMMSC '(' '*' ')'
+	|	AMMSC '(' DISTINCT column_ref ')'
+	|	AMMSC '(' ALL scalar_exp ')'
+	|	AMMSC '(' scalar_exp ')'
+	;
+
+literal:
+		STRING
+	|	INTNUM
+	;
+
+	/* miscellaneous */
+
+table_name:
+		NAME
+	|	NAME '.' NAME
+	;
+
+column_ref:
+		NAME
+	|	NAME '.' NAME	/* needs semantics */
+	|	NAME '.' NAME '.' NAME
+	;
+
+		/* data types */
+
+data_type:
+		CHARACTER
+	|	CHARACTER '(' INTNUM ')'
+	|	NUMERIC
+	|	NUMERIC '(' INTNUM ')'
+	|	NUMERIC '(' INTNUM ',' INTNUM ')'
+	|	DECIMAL
+	|	DECIMAL '(' INTNUM ')'
+	|	DECIMAL '(' INTNUM ',' INTNUM ')'
+	|	INTEGER
+	|	SMALLINT
+	|	FLOAT
+	|	FLOAT '(' INTNUM ')'
+	|	REAL
+	|	DOUBLE PRECISION
+	;
+
+	/* the various things you can name */
+
+column:		NAME
+	;
+
+parameter:
+		PARAMETER	/* :name handled in parser */
+	;
+
+range_variable:	NAME
+	;
+
+user:		NAME
+	;
+%%
